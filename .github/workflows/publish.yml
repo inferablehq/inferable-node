@@ -44,7 +44,7 @@ jobs:
           git config --global user.name "Inferable CI"
           git config --global user.email "ci@inferable.ai"
 
-      - name: Release with release-it
-        run: npx release-it --dry-run --npm.skipChecks
+      - name: Release It
+        run: npx release-it --npm.skipChecks
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
