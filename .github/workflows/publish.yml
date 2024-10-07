@@ -25,14 +25,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: 20
-          registry-url: "https://registry.npmjs.org"
-          token: ${{ secrets.NPM_TOKEN }}
-          cache: 'npm'
-
       - name: Install dependencies on root
         run: npm ci
 
@@ -44,7 +36,10 @@ jobs:
           git config --global user.name "Inferable CI"
           git config --global user.email "ci@inferable.ai"
 
-      - name: Release with release-it
-        run: npx release-it --dry-run --npm.skipChecks
+      - name: Release It
+        run: |
+          npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
+          npx release-it --npm.skipChecks
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

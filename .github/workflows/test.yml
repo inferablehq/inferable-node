@@ -20,9 +20,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - run: |
-          git fetch --no-tags --prune --depth=1 origin +refs/heads/main:refs/remotes/origin/main
-
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
