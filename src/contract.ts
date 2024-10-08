@@ -129,6 +129,7 @@ export const definition = {
     }),
     responses: {
       200: z.object({
+        clusterId: z.string(),
         queueUrl: z.string(),
         region: z.string(),
         enabled: z.boolean().default(true),
@@ -1445,6 +1446,18 @@ export const definition = {
     pathParams: z.object({
       clusterId: z.string(),
     }),
+  },
+  createRetry: {
+    method: "POST",
+    path: "/clusters/:clusterId/runs/:runId/retry",
+    headers: z.object({ authorization: z.string() }),
+    body: z.object({
+      messageId: z.string(),
+    }),
+    responses: {
+      204: z.undefined(),
+      401: z.undefined(),
+    },
   },
 } as const;
 

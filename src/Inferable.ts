@@ -75,6 +75,8 @@ export class Inferable {
   private machineId: string;
   private controlPlaneClient: ReturnType<typeof createClient>;
 
+  private clusterIdFromPollingAgent: string | null = null;
+
   private jobPollWaitTime?: number;
 
   private pollingAgents: PollingAgent[] = [];
@@ -214,7 +216,9 @@ export class Inferable {
 
     this.pollingAgents.push(pollingAgent);
 
-    await pollingAgent.start();
+    const { clusterId } = await pollingAgent.start();
+
+    this.clusterIdFromPollingAgent = clusterId;
   }
 
   private async stop(): Promise<void> {
@@ -403,5 +407,9 @@ export class Inferable {
 
   getFunctionRegistry() {
     return this.functionRegistry;
+  }
+
+  get clusterId(): string | null {
+    return this.clusterIdFromPollingAgent;
   }
 }
