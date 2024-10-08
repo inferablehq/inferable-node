@@ -2,6 +2,7 @@ import { ApiProvider, CallApiFunction } from "promptfoo";
 import { createApiClient } from "../create-client";
 import { z } from "zod";
 import { InferableError } from "../errors";
+import * as links from "../links";
 
 const mocksSchema = z.record(
   z.object({
@@ -31,7 +32,9 @@ class InferablePromptfooProvider implements ApiProvider {
     this.controlPlaneClient = createApiClient({});
 
     if (!process.env.INFERABLE_API_SECRET) {
-      throw new InferableError("No API Secret provided.");
+      throw new InferableError(
+        `No API Secret provided. Please see ${links.DOCS_AUTH}`,
+      );
     }
 
     this.apiSecret = process.env.INFERABLE_API_SECRET;

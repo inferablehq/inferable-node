@@ -21,6 +21,7 @@ import {
   validateFunctionSchema,
   validateServiceName,
 } from "./util";
+import * as links from "./links";
 
 // Custom json formatter
 debug.formatters.J = (json) => {
@@ -126,7 +127,9 @@ export class Inferable {
     const apiSecret = options?.apiSecret || process.env.INFERABLE_API_SECRET;
 
     if (!apiSecret) {
-      throw new InferableError("No API Secret provided.");
+      throw new InferableError(
+        `No API Secret provided. Please see ${links.DOCS_AUTH}`,
+      );
     }
 
     this.apiSecret = apiSecret;
@@ -311,7 +314,7 @@ export class Inferable {
 
     if (this.isCurrentlyPolling(registration.serviceName)) {
       throw new InferableError(
-        "Functions must be registered before starting the service",
+        `Functions must be registered before starting the service. Please see ${links.DOCS_FUNCTIONS}`,
         {
           serviceName: registration.serviceName,
         },
@@ -319,7 +322,9 @@ export class Inferable {
     }
 
     if (typeof registration.func !== "function") {
-      throw new InferableError("func must be a function");
+      throw new InferableError(
+        `func must be a function. Please see ${links.DOCS_FUNCTIONS}`,
+      );
     }
 
     log(`Registering function`, {
