@@ -2,7 +2,7 @@ import debug from "debug";
 import path from "path";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
-import { createClient } from "./create-client";
+import { createApiClient } from "./create-client";
 import { InferableError } from "./errors";
 import { FunctionRegistration } from "./types";
 import { machineId } from "./machine-id";
@@ -73,7 +73,7 @@ export class Inferable {
   private apiSecret: string;
   private endpoint: string;
   private machineId: string;
-  private controlPlaneClient: ReturnType<typeof createClient>;
+  private controlPlaneClient: ReturnType<typeof createApiClient>;
 
   private jobPollWaitTime?: number;
 
@@ -152,24 +152,20 @@ export class Inferable {
       machineId: this.machineId,
     });
 
-    this.controlPlaneClient = createClient({
+    this.controlPlaneClient = createApiClient({
       baseUrl: this.endpoint,
       machineId: this.machineId,
       apiSecret: this.apiSecret,
     });
 
     setInterval(() => {
-      const activeServices = this.pollingAgents
-        .filter((p) => p.polling)
-        .map((p) => p.serviceName);
-
       this.controlPlaneClient
         .pingClusterV2({
           headers: {
             "x-sentinel-no-mask": "1",
           },
           body: {
-            services: activeServices,
+            services: this.activeServices,
           },
         })
         .catch((e) => {
@@ -183,6 +179,26 @@ export class Inferable {
 
   public get secretPartial(): string {
     return (this.apiSecret || "").substring(0, 4) + "...";
+  }
+
+  /**
+   * An array containing the name of all services currently polling.
+   */
+  public get activeServices(): string[] {
+    return this.pollingAgents
+      .filter((agent) => agent.polling)
+      .map((agent) => agent.serviceName);
+  }
+
+  /**
+   * An array containing the name of all services not currently polling.
+   *
+   * Note that this will only include services which have been started (`.start()` called).
+   */
+  public get inactiveServices(): string[] {
+    return this.pollingAgents
+      .filter((agent) => !agent.polling)
+      .map((agent) => agent.serviceName);
   }
 
   private isCurrentlyPolling(service: string): boolean {

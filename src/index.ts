@@ -16,8 +16,6 @@
  * ```
  */
 
-import { BLOB_DATA_KEY } from "./util";
-
 export { Inferable } from "./Inferable";
 export const masked = () => {
   throw new Error("masked is not implemented");
@@ -34,4 +32,4 @@ export {
   blob,
 } from "./util";
 
-export { createClient as createApiClient } from "./create-client";
+export { createApiClient } from "./create-client";
