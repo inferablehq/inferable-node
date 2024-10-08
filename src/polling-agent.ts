@@ -39,7 +39,7 @@ export class PollingAgent {
   private functionRegistry: { [key: string]: FunctionRegistration } = {};
   private pollingEnabled: boolean = true;
   private credentialsExpiration: Date | null = null;
-
+  private clusterId: string | null = null;
   constructor(options: PollingAgentOptions) {
     this.service = options.service;
     this.exitHandler = options.exitHandler;
@@ -74,7 +74,9 @@ export class PollingAgent {
     }
   }
 
-  private async registerMachine(): Promise<void> {
+  private async registerMachine(): Promise<{
+    clusterId: string;
+  }> {
     const functions = Object.entries(this.functionRegistry)
       .filter(([, { serviceName }]) => serviceName === this.service.name)
       .map(([functionName, registration]) => ({
@@ -193,6 +195,10 @@ export class PollingAgent {
         check();
       });
     }
+
+    return {
+      clusterId: registerResult.body.clusterId,
+    };
   }
 
   private async processMessage(message: Message): Promise<void> {
@@ -348,7 +354,7 @@ export class PollingAgent {
 
   async start() {
     log("Starting polling agent", { service: this.service });
-    await this.registerMachine();
+    return this.registerMachine();
   }
 
   async stop(): Promise<void> {
