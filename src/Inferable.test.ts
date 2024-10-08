@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Inferable } from "./Inferable";
+import { TEST_SECRET } from "./tests/utils";
 
 describe("Inferable", () => {
   const env = process.env;
@@ -66,5 +67,44 @@ describe("Inferable", () => {
     expect(
       registry.echo.authenticate("test", { foo: "test" }),
     ).resolves.toBeUndefined();
+  });
+
+  it("should list services correctly", async () => {
+    const d = new Inferable({
+      apiSecret: TEST_SECRET,
+    });
+
+    const service = d.service({ name: "test" });
+
+    const echo = async (param: { foo: string }) => {
+      return param.foo;
+    };
+
+    service.register({
+      func: echo,
+      name: "echo",
+      schema: {
+        input: z.object({
+          foo: z.string(),
+        }),
+      },
+      description: "echoes the input",
+      authenticate: (ctx, args) => {
+        return args.foo === ctx ? Promise.resolve() : Promise.reject();
+      },
+    });
+
+    expect(d.activeServices).toEqual([]);
+    expect(d.inactiveServices).toEqual([]);
+
+    await service.start();
+
+    expect(d.activeServices).toEqual(["test"]);
+    expect(d.inactiveServices).toEqual([]);
+
+    await service.stop();
+
+    expect(d.activeServices).toEqual([]);
+    expect(d.inactiveServices).toEqual(["test"]);
   });
 });

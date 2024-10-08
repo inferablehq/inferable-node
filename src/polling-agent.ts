@@ -2,7 +2,7 @@ import { Message, SQSClient } from "@aws-sdk/client-sqs";
 import debug from "debug";
 import { Consumer } from "sqs-consumer";
 import { z } from "zod";
-import { createClient } from "./create-client";
+import { createApiClient } from "./create-client";
 import { InferableError } from "./errors";
 import { serializeError } from "./serialize-error";
 import { executeFn, Result } from "./execute-fn";
@@ -31,7 +31,7 @@ export type PollingAgentOptions = {
 export class PollingAgent {
   private exitHandler: () => void;
 
-  private client: ReturnType<typeof createClient>;
+  private client: ReturnType<typeof createApiClient>;
   private service: PollingAgentService;
   private sqsQueueUrl?: string;
   private sqsClient?: SQSClient;
@@ -45,7 +45,7 @@ export class PollingAgent {
     this.exitHandler = options.exitHandler;
     this.functionRegistry = options.functionRegistry;
 
-    this.client = createClient({
+    this.client = createApiClient({
       baseUrl: options.endpoint,
       machineId: options.machineId,
       apiSecret: options.apiSecret,

@@ -2,7 +2,7 @@ import { initClient, tsRestFetchApi } from "@ts-rest/core";
 import { contract } from "./contract";
 const { version: SDK_VERSION } = require("../package.json");
 
-export const createClient = ({
+export const createApiClient = ({
   baseUrl,
   machineId,
   clientAbortController,

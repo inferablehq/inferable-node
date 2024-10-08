@@ -1,5 +1,5 @@
 import { ApiProvider, CallApiFunction } from "promptfoo";
-import { createClient } from "../create-client";
+import { createApiClient } from "../create-client";
 import { z } from "zod";
 import { InferableError } from "../errors";
 
@@ -23,12 +23,12 @@ const inputSchema = z.object({
 
 class InferablePromptfooProvider implements ApiProvider {
   providerId: string;
-  controlPlaneClient: ReturnType<typeof createClient>;
+  controlPlaneClient: ReturnType<typeof createApiClient>;
   apiSecret: string;
 
   constructor() {
     this.providerId = "InferableProvider";
-    this.controlPlaneClient = createClient({});
+    this.controlPlaneClient = createApiClient({});
 
     if (!process.env.INFERABLE_API_SECRET) {
       throw new InferableError("No API Secret provided.");

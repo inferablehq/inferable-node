@@ -1,7 +1,7 @@
 import assert from "assert";
 import { setupServer } from "msw/node";
 import { z } from "zod";
-import { createClient } from "./create-client";
+import { createApiClient } from "./create-client";
 import { Inferable } from "./Inferable";
 import { bypass, http, HttpResponse, passthrough } from "msw";
 import { TEST_CLUSTER_ID, TEST_ENDPOINT, TEST_SECRET } from "./tests/utils";
@@ -43,7 +43,7 @@ const testService = () => {
     },
   });
 
-  const client = createClient({
+  const client = createApiClient({
     baseUrl: TEST_ENDPOINT,
     machineId: `machine-for-${service.definition.name}`,
   });
