@@ -11,11 +11,11 @@ if (
   throw new Error("Test environment variables not set");
 }
 
+export const TEST_ENDPOINT = process.env.INFERABLE_API_ENDPOINT;
 export const TEST_CLUSTER_ID = process.env.INFERABLE_CLUSTER_ID;
 
-const TEST_ENDPOINT = process.env.INFERABLE_API_ENDPOINT;
-const TEST_MACHINE_SECRET = process.env.INFERABLE_MACHINE_SECRET;
-const TEST_CONSUME_SECRET = process.env.INFERABLE_CONSUME_SECRET;
+export const TEST_MACHINE_SECRET = process.env.INFERABLE_MACHINE_SECRET;
+export const TEST_CONSUME_SECRET = process.env.INFERABLE_CONSUME_SECRET;
 
 console.log("Testing with", {
   TEST_ENDPOINT,

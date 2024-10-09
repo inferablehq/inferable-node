@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { Inferable } from "./Inferable";
-import { TEST_CLUSTER_ID, client, inferableInstance } from "./tests/utils";
+import {
+  TEST_CLUSTER_ID,
+  TEST_CONSUME_SECRET,
+  TEST_MACHINE_SECRET,
+  client,
+  inferableInstance,
+} from "./tests/utils";
 
 const testService = () => {
   const inferable = inferableInstance();
@@ -47,24 +53,30 @@ describe("Inferable", () => {
   });
 
   it("should initialize without optional args", () => {
-    expect(() => new Inferable({ apiSecret: "test" })).not.toThrow();
+    expect(
+      () => new Inferable({ apiSecret: TEST_MACHINE_SECRET }),
+    ).not.toThrow();
+  });
+
+  it("should initialize with API secret in environment", () => {
+    process.env.INFERABLE_API_SECRET = TEST_MACHINE_SECRET;
+    expect(() => new Inferable()).not.toThrow();
   });
 
   it("should throw if no API secret is provided", () => {
     expect(() => new Inferable()).toThrow();
   });
 
-  it("should initialize with API secret in environment", () => {
-    process.env.INFERABLE_API_SECRET = "environment_secret";
-    expect(() => new Inferable()).not.toThrow();
-    const d = new Inferable();
-    expect(d.secretPartial).toBe("envi...");
+  it("should throw if invalid API secret is provided", () => {
+    expect(() => new Inferable({ apiSecret: "invalid" })).toThrow();
+  });
+
+  it("should throw if incorrect API secret is provided", () => {
+    expect(() => new Inferable({ apiSecret: TEST_CONSUME_SECRET })).toThrow();
   });
 
   it("should register a function", async () => {
-    const d = new Inferable({
-      apiSecret: "fake",
-    });
+    const d = inferableInstance();
 
     const echo = async (param: { foo: string }) => {
       return param.foo;

@@ -303,10 +303,6 @@ export class Inferable {
     return this.services[0]?.clusterId || null;
   }
 
-  public get secretPartial() {
-    return (this.apiSecret || "").substring(0, 4) + "...";
-  }
-
   private registerFunction<T extends z.ZodTypeAny | JsonSchemaInput>({
     name,
     authenticate,
