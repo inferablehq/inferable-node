@@ -1,3 +1,4 @@
+import assert from "assert";
 import { TEST_CLUSTER_ID, client } from "../utils";
 import { productService } from "./product";
 
@@ -44,10 +45,10 @@ describe("Caching", () => {
     });
 
     expect(result1.status).toBe(200);
-    if (result1.status !== 200) throw new Error("Assertion failed");
+    assert(result1.status === 200);
 
     expect(result2.status).toBe(200);
-    if (result2.status !== 200) throw new Error("Assertion failed");
+    assert(result2.status === 200);
 
     expect(result1.body).toEqual(
       expect.objectContaining({
@@ -92,10 +93,10 @@ describe("Caching", () => {
     });
 
     expect(result1.status).toBe(200);
-    if (result1.status !== 200) throw new Error("Assertion failed");
+    assert(result1.status === 200);
 
     expect(result2.status).toBe(200);
-    if (result2.status !== 200) throw new Error("Assertion failed");
+    assert(result2.status === 200);
 
     expect(result1.body).toEqual(
       expect.objectContaining({

@@ -139,6 +139,11 @@ export class Service {
       },
     });
 
+    const retryAfterHeader = pollResult.headers.get("retry-after");
+    if (retryAfterHeader && !isNaN(Number(retryAfterHeader))) {
+      this.retryAfter = Number(retryAfterHeader);
+    }
+
     if (pollResult?.status !== 200) {
       throw new InferableError("Failed to fetch calls", {
         status: pollResult?.status,
@@ -151,11 +156,6 @@ export class Service {
         await this.processCall(job);
       }),
     );
-
-    const retryAfterHeader = pollResult.headers.get("retry-after");
-    if (retryAfterHeader && !isNaN(Number(retryAfterHeader))) {
-      this.retryAfter = Number(retryAfterHeader);
-    }
   }
 
   private async processCall(call: CallMessage): Promise<void> {

@@ -1,3 +1,4 @@
+import assert from "assert";
 import { z } from "zod";
 import { Inferable } from "./Inferable";
 import {
@@ -7,6 +8,8 @@ import {
   client,
   inferableInstance,
 } from "./tests/utils";
+import { setupServer } from "msw/node";
+import { http, HttpResponse, passthrough } from "msw";
 
 const testService = () => {
   const inferable = inferableInstance();
@@ -165,7 +168,7 @@ describe("Functions", () => {
 
     results.forEach((result) => {
       expect(result.status).toBe(200);
-      if (result.status !== 200) throw new Error("Assertion failed");
+      assert(result.status === 200);
 
       expect(result.body).toEqual(
         expect.objectContaining({
@@ -179,5 +182,63 @@ describe("Functions", () => {
     });
 
     await service.stop();
+  });
+
+  it("should recover from transient polling errors", async () => {
+    // Fail the first 20 polls
+    let count = 0;
+    const server = setupServer(
+      http.all("*/calls", async () => {
+        if (count < 1) {
+          count += 1;
+          return new HttpResponse(null, { status: 500 });
+        }
+        return passthrough();
+      }),
+      http.all("*", async () => {
+        return passthrough();
+      }),
+    );
+    server.listen();
+
+    const service = testService();
+    await service.start();
+
+    const result = await client.createCall({
+      query: {
+        waitTime: 20,
+      },
+      params: {
+        clusterId: TEST_CLUSTER_ID,
+      },
+      body: {
+        function: "echo",
+        service: service.definition.name,
+        input: { text: "foo" },
+      },
+    });
+
+    expect(result.status).toEqual(200);
+    assert(result.status === 200);
+    expect(result.body.result).toEqual({ echo: "foo" });
+
+    server.close();
+  });
+
+  it("should fail if machine registeration fails", async () => {
+    const server = setupServer(
+      http.all("*/machines", async () => {
+        return new HttpResponse(null, { status: 500 });
+      }),
+      http.all("*", async () => {
+        return passthrough();
+      }),
+    );
+    server.listen();
+
+    const service = testService();
+    expect(() => service.start()).rejects.toThrow();
+
+    server.close();
   });
 });

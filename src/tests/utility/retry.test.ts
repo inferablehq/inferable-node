@@ -1,3 +1,4 @@
+import assert from "assert";
 import { TEST_CLUSTER_ID, client } from "../utils";
 import { productService } from "./product";
 
@@ -30,7 +31,7 @@ describe("retrying", () => {
     });
 
     expect(result.status).toBe(200);
-    if (result.status !== 200) throw new Error("Assertion failed");
+    assert(result.status === 200);
 
     expect(result.body).toEqual(
       expect.objectContaining({
@@ -57,7 +58,7 @@ describe("retrying", () => {
     });
 
     expect(result.status).toBe(200);
-    if (result.status !== 200) throw new Error("Assertion failed");
+    assert(result.status === 200);
 
     expect(result.body).toEqual(
       expect.objectContaining({

@@ -1,3 +1,4 @@
+import assert from "assert";
 import { client, TEST_CLUSTER_ID } from "../utils";
 import { animalService } from "./animals";
 
@@ -27,7 +28,7 @@ describe("Errors", () => {
     });
 
     expect(result.status).toBe(200);
-    if (result.status !== 200) throw new Error("Assertion failed");
+    assert(result.status === 200);
 
     expect(result.body).toEqual(
       expect.objectContaining({
@@ -57,7 +58,7 @@ describe("Errors", () => {
     });
 
     expect(result.status).toBe(200);
-    if (result.status !== 200) throw new Error("Assertion failed");
+    assert(result.status === 200);
 
     expect(result.body).toEqual(
       expect.objectContaining({
