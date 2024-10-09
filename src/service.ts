@@ -27,6 +27,8 @@ export class Service {
 
   private client: ReturnType<typeof createApiClient>;
 
+  private retryAfter = DEFAULT_RETRY_AFTER_SECONDS;
+
   constructor(options: {
     endpoint: string;
     machineId: string;
@@ -112,6 +114,9 @@ export class Service {
         log("Failed poll iteration", e);
         failureCount++;
       }
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.retryAfter * 1000),
+      );
     }
 
     log("Quitting polling agent", { service: this.name, failureCount });
@@ -135,8 +140,10 @@ export class Service {
     });
 
     if (pollResult?.status !== 200) {
-      log("Failed to fetch calls", JSON.stringify(pollResult?.body));
-      return [];
+      throw new InferableError("Failed to fetch calls", {
+        status: pollResult?.status,
+        body: pollResult?.body,
+      });
     }
 
     await Promise.all(
@@ -145,14 +152,10 @@ export class Service {
       }),
     );
 
-    let retryAfter = DEFAULT_RETRY_AFTER_SECONDS;
-
     const retryAfterHeader = pollResult.headers.get("retry-after");
     if (retryAfterHeader && !isNaN(Number(retryAfterHeader))) {
-      retryAfter = Number(retryAfterHeader);
+      this.retryAfter = Number(retryAfterHeader);
     }
-
-    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
   }
 
   private async processCall(call: CallMessage): Promise<void> {
