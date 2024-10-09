@@ -3,8 +3,8 @@ import { initClient } from "@ts-rest/core";
 import { contract } from "../contract";
 
 if (
-  !process.env.INFERABLE_MACHINE_KEY ||
-  !process.env.INFERABLE_CONSUME_KEY ||
+  !process.env.INFERABLE_MACHINE_SECRET ||
+  !process.env.INFERABLE_CONSUME_SECRET ||
   !process.env.INFERABLE_API_ENDPOINT ||
   !process.env.INFERABLE_CLUSTER_ID
 ) {
@@ -14,8 +14,8 @@ if (
 export const TEST_ENDPOINT = process.env.INFERABLE_API_ENDPOINT;
 export const TEST_CLUSTER_ID = process.env.INFERABLE_CLUSTER_ID;
 
-export const TEST_MACHINE_KEY = process.env.INFERABLE_MACHINE_KEY;
-export const TEST_CONSUME_KEY = process.env.INFERABLE_CONSUME_KEY;
+export const TEST_MACHINE_SECRET = process.env.INFERABLE_MACHINE_SECRET;
+export const TEST_CONSUME_SECRET = process.env.INFERABLE_CONSUME_SECRET;
 
 console.log("Testing with", {
   TEST_ENDPOINT,
@@ -25,13 +25,13 @@ console.log("Testing with", {
 export const client = initClient(contract, {
   baseUrl: TEST_ENDPOINT,
   baseHeaders: {
-    authorization: `${TEST_CONSUME_KEY}`,
+    authorization: `${TEST_CONSUME_SECRET}`,
   },
 });
 
 export const inferableInstance = () =>
   new Inferable({
-    apiKey: TEST_MACHINE_KEY,
+    apiSecret: TEST_MACHINE_SECRET,
     endpoint: TEST_ENDPOINT,
     jobPollWaitTime: 5000,
   });

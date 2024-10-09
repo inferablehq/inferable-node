@@ -41,7 +41,9 @@ export const log = debug("inferable:client");
  * // src/service.ts
  *
  * // create a new Inferable instance
- * const d = new Inferable("API_SECRET");
+ * const d = new Inferable({
+ *  apiSecret: "API_SECRET",
+ * });
  *
  * const myService = d.service({
  *   name: "my-service",
@@ -70,7 +72,7 @@ export class Inferable {
     return require(path.join(__dirname, "..", "package.json")).version;
   }
 
-  private apiKey: string;
+  private apiSecret: string;
   private endpoint: string;
   private machineId: string;
 
@@ -107,25 +109,37 @@ export class Inferable {
    * ```
    */
   constructor(options?: {
-    apiKey?: string;
+    apiSecret?: string;
     endpoint?: string;
     jobPollWaitTime?: number;
   }) {
-    if (options?.apiKey && process.env.INFERABLE_API_SECRET) {
+    if (options?.apiSecret && process.env.INFERABLE_API_SECRET) {
       log(
         "API Secret was provided as an option and environment variable. Constructor argument will be used.",
       );
     }
 
-    const apiKey = options?.apiKey || process.env.INFERABLE_API_SECRET;
+    const apiSecret = options?.apiSecret || process.env.INFERABLE_API_SECRET;
 
-    if (!apiKey) {
+    if (!apiSecret) {
       throw new InferableError(
-        `No API Key provided. Please see ${links.DOCS_AUTH}`,
+        `No API Secret provided. Please see ${links.DOCS_AUTH}`,
       );
     }
 
-    this.apiKey = apiKey;
+    if (!apiSecret.startsWith("sk_cluster_machine")) {
+      if (apiSecret.startsWith("sk_")) {
+        throw new InferableError(
+          `Provided non-Machine API Secret. Please see ${links.DOCS_AUTH}`,
+        );
+      }
+
+      throw new InferableError(
+        `Invalid API Secret. Please see ${links.DOCS_AUTH}`,
+      );
+    }
+
+    this.apiSecret = apiSecret;
 
     this.endpoint =
       options?.endpoint ||
@@ -256,7 +270,7 @@ export class Inferable {
         const serivce = new Service({
           endpoint: this.endpoint,
           machineId: this.machineId,
-          apiKey: this.apiKey,
+          apiSecret: this.apiSecret,
           service: input.name,
           functions: Object.values(this.functionRegistry).filter(
             (f) => f.serviceName == input.name,
@@ -287,10 +301,6 @@ export class Inferable {
    */
   get clusterId(): string | null {
     return this.services[0]?.clusterId || null;
-  }
-
-  public get keyPartial() {
-    return (this.apiKey || "").substring(0, 4) + "...";
   }
 
   private registerFunction<T extends z.ZodTypeAny | JsonSchemaInput>({
