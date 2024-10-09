@@ -237,7 +237,8 @@ describe("Functions", () => {
     server.listen();
 
     const service = testService();
-    expect(() => service.start()).rejects.toThrow();
+
+    await expect(service.start).rejects.toThrow();
 
     server.close();
   });
