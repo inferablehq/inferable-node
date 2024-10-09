@@ -8,6 +8,7 @@ import { FunctionRegistration } from "./types";
 import { extractBlobs } from "./util";
 
 const MAX_CONSECUTIVE_POLL_FAILURES = 50;
+const DEFAULT_RETRY_AFTER_SECONDS = 10;
 
 export const log = debug("inferable:client:polling-agent");
 
@@ -143,6 +144,15 @@ export class Service {
         await this.processCall(job);
       }),
     );
+
+    let retryAfter = DEFAULT_RETRY_AFTER_SECONDS;
+
+    const retryAfterHeader = pollResult.headers.get("retry-after");
+    if (retryAfterHeader && !isNaN(Number(retryAfterHeader))) {
+      retryAfter = Number(retryAfterHeader);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
   }
 
   private async processCall(call: CallMessage): Promise<void> {
