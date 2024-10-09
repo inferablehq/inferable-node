@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { d } from "../utils";
+import { inferableInstance } from "../utils";
 
 export const getNormalAnimal = async () => {
   throw new Error("This is a normal error");
@@ -16,7 +16,7 @@ export const getCustomAnimal = async () => {
   throw new AnimalError("This is a custom error");
 };
 
-export const animalService = d.service({
+export const animalService = inferableInstance().service({
   name: "animal",
 });
 

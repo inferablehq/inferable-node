@@ -1,5 +1,4 @@
 import {
-  BLOB_DATA_KEY,
   ajvErrorToFailures,
   blob,
   extractBlobs,

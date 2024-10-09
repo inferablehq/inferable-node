@@ -36,6 +36,7 @@ jobs:
         run: npm run test
         env:
           INFERABLE_API_ENDPOINT: 'https://api.inferable.ai'
-          INFERABLE_API_SECRET: ${{ secrets.INFERABLE_API_SECRET }}
           INFERABLE_CLUSTER_ID: ${{ vars.INFERABLE_CLUSTER_ID }}
+          INFERABLE_MACHINE_KEY: ${{ secrets.INFERABLE_MACHINE_KEY }}
+          INFERABLE_CONSUME_KEY: ${{ secrets.INFERABLE_CONSUME_KEY }}
 

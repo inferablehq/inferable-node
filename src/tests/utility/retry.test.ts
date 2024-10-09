@@ -1,4 +1,4 @@
-import { buildRequest, client } from "../utils";
+import { TEST_CLUSTER_ID, client } from "../utils";
 import { productService } from "./product";
 
 describe("retrying", () => {
@@ -15,29 +15,55 @@ describe("retrying", () => {
   it("should not retry a function when attempts is 1", async () => {
     const productId = Math.random().toString();
 
-    const result = await client.executeJobSync(
-      buildRequest({
+    const result = await client.createCall({
+      query: {
+        waitTime: 20,
+      },
+      params: {
+        clusterId: TEST_CLUSTER_ID,
+      },
+      body: {
         service: service.definition.name,
         function: "failingFunction",
         input: { id: productId },
+      },
+    });
+
+    expect(result.status).toBe(200);
+    if (result.status !== 200) throw new Error("Assertion failed");
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        status: "failure",
       }),
     );
-
-    expect(result.status).toBe(500);
   });
 
   it("should be able to retry a function", async () => {
     const productId = Math.random().toString();
 
-    const result = await client.executeJobSync(
-      buildRequest({
+    const result = await client.createCall({
+      query: {
+        waitTime: 20,
+      },
+      params: {
+        clusterId: TEST_CLUSTER_ID,
+      },
+      body: {
         service: service.definition.name,
         function: "succeedsOnSecondAttempt",
         input: { id: productId },
-      }),
-    );
+      },
+    });
 
     expect(result.status).toBe(200);
-    expect(result.body).toHaveProperty("resultType", "resolution");
+    if (result.status !== 200) throw new Error("Assertion failed");
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        status: "success",
+        resultType: "resolution",
+      }),
+    );
   }, 30_000);
 });

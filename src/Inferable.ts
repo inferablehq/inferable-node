@@ -2,11 +2,10 @@ import debug from "debug";
 import path from "path";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
-import { createApiClient } from "./create-client";
 import { InferableError } from "./errors";
 import { FunctionRegistration } from "./types";
 import { machineId } from "./machine-id";
-import { PollingAgent } from "./polling-agent";
+import { Service } from "./service";
 import {
   FunctionConfig,
   FunctionInput,
@@ -71,16 +70,11 @@ export class Inferable {
     return require(path.join(__dirname, "..", "package.json")).version;
   }
 
-  private apiSecret: string;
+  private apiKey: string;
   private endpoint: string;
   private machineId: string;
-  private controlPlaneClient: ReturnType<typeof createApiClient>;
 
-  private clusterIdFromPollingAgent: string | null = null;
-
-  private jobPollWaitTime?: number;
-
-  private pollingAgents: PollingAgent[] = [];
+  private services: Service[] = [];
 
   private functionRegistry: { [key: string]: FunctionRegistration } = {};
 
@@ -89,7 +83,6 @@ export class Inferable {
    * @param apiSecret The API Secret for your Inferable cluster. If not provided, it will be read from the `INFERABLE_API_SECRET` environment variable.
    * @param options Additional options for the Inferable client.
    * @param options.endpoint The endpoint for the Inferable cluster. Defaults to https://api.inferable.ai.
-   * @param options.jobPollWaitTime The amount of time in milliseconds that the client will maintain a connection to the control-plane when polling for jobs. Defaults to 20000ms. If a job is not received within this time, the client will close the connection and try again.
    *
    * @example
    * ```ts
@@ -114,85 +107,38 @@ export class Inferable {
    * ```
    */
   constructor(options?: {
-    apiSecret?: string;
+    apiKey?: string;
     endpoint?: string;
     jobPollWaitTime?: number;
   }) {
-    if (options?.apiSecret && process.env.INFERABLE_API_SECRET) {
+    if (options?.apiKey && process.env.INFERABLE_API_SECRET) {
       log(
         "API Secret was provided as an option and environment variable. Constructor argument will be used.",
       );
     }
 
-    const apiSecret = options?.apiSecret || process.env.INFERABLE_API_SECRET;
+    const apiKey = options?.apiKey || process.env.INFERABLE_API_SECRET;
 
-    if (!apiSecret) {
+    if (!apiKey) {
       throw new InferableError(
-        `No API Secret provided. Please see ${links.DOCS_AUTH}`,
+        `No API Key provided. Please see ${links.DOCS_AUTH}`,
       );
     }
 
-    this.apiSecret = apiSecret;
+    this.apiKey = apiKey;
 
     this.endpoint =
       options?.endpoint ||
       process.env.INFERABLE_API_ENDPOINT ||
       "https://api.inferable.ai";
     this.machineId = machineId();
-
-    const jobPollWaitTime = options?.jobPollWaitTime || 20000;
-
-    if (jobPollWaitTime < 5000) {
-      throw new InferableError("jobPollWaitTime must be at least 5000ms");
-    }
-
-    if (jobPollWaitTime > 20000) {
-      throw new InferableError("jobPollWaitTime must be at most 20000ms");
-    }
-
-    this.jobPollWaitTime = options?.jobPollWaitTime;
-
-    log("Initializing control plane client", {
-      endpoint: this.endpoint,
-      machineId: this.machineId,
-    });
-
-    this.controlPlaneClient = createApiClient({
-      baseUrl: this.endpoint,
-      machineId: this.machineId,
-      apiSecret: this.apiSecret,
-    });
-
-    setInterval(() => {
-      this.controlPlaneClient
-        .pingClusterV2({
-          headers: {
-            "x-sentinel-no-mask": "1",
-          },
-          body: {
-            services: this.activeServices,
-          },
-        })
-        .catch((e) => {
-          console.error(
-            "Error pinging cluster. Will try again next interval.",
-            e,
-          );
-        });
-    }, 10000);
-  }
-
-  public get secretPartial(): string {
-    return (this.apiSecret || "").substring(0, 4) + "...";
   }
 
   /**
    * An array containing the name of all services currently polling.
    */
-  public get activeServices(): string[] {
-    return this.pollingAgents
-      .filter((agent) => agent.polling)
-      .map((agent) => agent.serviceName);
+  public get activeServices() {
+    return this.services.filter((s) => s.polling).map((s) => s.name);
   }
 
   /**
@@ -200,55 +146,154 @@ export class Inferable {
    *
    * Note that this will only include services which have been started (`.start()` called).
    */
-  public get inactiveServices(): string[] {
-    return this.pollingAgents
-      .filter((agent) => !agent.polling)
-      .map((agent) => agent.serviceName);
+  public get inactiveServices() {
+    return this.services.filter((s) => !s.polling).map((s) => s.name);
   }
 
-  private isCurrentlyPolling(service: string): boolean {
-    return this.pollingAgents
-      .filter((agent) => agent.serviceName == service)
-      .some((agent) => agent.polling);
+  /**
+   * An array containing the name of all functions which have been registered.
+   */
+  public get registeredFunctions() {
+    return Object.values(this.functionRegistry).map((f) => f.name);
   }
 
-  private async listen(name: string): Promise<void> {
-    if (this.isCurrentlyPolling(name)) {
-      throw new InferableError(`Service is already started`, {
-        serviceName: name,
+  /**
+   * Convenience reference to a service with name 'default'.
+   * @returns A registered service instance.
+   * @see {@link service}
+   * @example
+   * ```ts
+   * const d = new Inferable({apiSecret: "API_SECRET"});
+   *
+   * d.default.register("hello", z.object({name: z.string()}), async ({name}: {name: string}) => {
+   *   return `Hello ${name}`;
+   * });
+   *
+   * // start the service
+   * await d.default.start();
+   *
+   * // stop the service on shutdown
+   * process.on("beforeExit", async () => {
+   *   await d.default.stop();
+   * });
+   *
+   */
+  public get default() {
+    return this.service({
+      name: "default",
+    });
+  }
+
+  /**
+   * Registers a service with Inferable. This will register all functions on the service.
+   * @param input The service definition.
+   * @returns A registered service instance.
+   * @example
+   * ```ts
+   * const d = new Inferable({apiSecret: "API_SECRET"});
+   *
+   * const service = d.service({
+   *   name: "my-service",
+   * });
+   *
+   * service.register("hello", z.object({name: z.string()}), async ({name}: {name: string}) => {
+   *   return `Hello ${name}`;
+   * });
+   *
+   * // start the service
+   * await service.start();
+   *
+   * // stop the service on shutdown
+   * process.on("beforeExit", async () => {
+   *   await service.stop();
+   * });
+   * ```
+   */
+  public service<T extends z.ZodTypeAny | JsonSchemaInput>(input: {
+    name: string;
+    functions?:
+      | FunctionRegistrationInput<T>[]
+      | Promise<FunctionRegistrationInput<T>[]>;
+  }): RegisteredService {
+    validateServiceName(input.name);
+
+    const register: RegisteredService["register"] = ({
+      name,
+      func,
+      schema,
+      config,
+      description,
+      authenticate,
+    }) => {
+      this.registerFunction({
+        name,
+        authenticate,
+        serviceName: input.name,
+        func,
+        inputSchema: schema.input,
+        config,
+        description,
       });
-    }
+    };
 
-    const pollingAgent = new PollingAgent({
-      endpoint: this.endpoint,
-      machineId: this.machineId,
-      apiSecret: this.apiSecret,
-      service: {
-        name: name,
+    return {
+      definition: input,
+      register,
+      start: async () => {
+        const functions = await input.functions;
+        functions?.forEach(register);
+
+        const existing = this.services.find(
+          (service) => service.name == input.name,
+        );
+
+        if (existing) {
+          throw new InferableError(`Service is already started`, {
+            serviceName: input.name,
+          });
+        }
+
+        const serivce = new Service({
+          endpoint: this.endpoint,
+          machineId: this.machineId,
+          apiKey: this.apiKey,
+          service: input.name,
+          functions: Object.values(this.functionRegistry).filter(
+            (f) => f.serviceName == input.name,
+          ),
+        });
+
+        this.services.push(serivce);
+        await serivce.start();
       },
-      ttl: this.jobPollWaitTime,
-      exitHandler: () => {
-        // TODO: deprecate
+      stop: async () => {
+        const existing = this.services.find(
+          (service) => service.name == input.name,
+        );
+
+        if (!existing) {
+          throw new InferableError(`Service is not started`, {
+            serviceName: input.name,
+          });
+        }
+
+        await existing.stop();
       },
-      functionRegistry: this.functionRegistry,
-    });
-
-    this.pollingAgents.push(pollingAgent);
-
-    const { clusterId } = await pollingAgent.start();
-
-    this.clusterIdFromPollingAgent = clusterId;
+    };
   }
 
-  private async stop(): Promise<void> {
-    await Promise.all(this.pollingAgents.map((agent) => agent.stop()));
-
-    log("All polling agents quit", {
-      count: this.pollingAgents.length,
-    });
+  /**
+   * The cluster ID for this Inferable instance.
+   */
+  get clusterId(): string | null {
+    return this.services[0]?.clusterId || null;
   }
 
-  private register<T extends z.ZodTypeAny | JsonSchemaInput>({
+  public get keyPartial() {
+    return (this.apiKey || "").substring(0, 4) + "...";
+  }
+
+  private registerFunction<T extends z.ZodTypeAny | JsonSchemaInput>({
     name,
     authenticate,
     serviceName,
@@ -312,7 +357,11 @@ export class Inferable {
       description,
     };
 
-    if (this.isCurrentlyPolling(registration.serviceName)) {
+    const existing = this.services.find(
+      (service) => service.name == serviceName,
+    );
+
+    if (existing) {
       throw new InferableError(
         `Functions must be registered before starting the service. Please see ${links.DOCS_FUNCTIONS}`,
         {
@@ -332,105 +381,5 @@ export class Inferable {
     });
 
     this.functionRegistry[registration.name] = registration;
-  }
-
-  /**
-   * Convenience reference to a service with name 'default'.
-   * @returns A registered service instance.
-   * @see {@link service}
-   * @example
-   * ```ts
-   * const d = new Inferable({apiSecret: "API_SECRET"});
-   *
-   * d.default.register("hello", z.object({name: z.string()}), async ({name}: {name: string}) => {
-   *   return `Hello ${name}`;
-   * });
-   *
-   * // start the service
-   * await d.default.start();
-   *
-   * // stop the service on shutdown
-   * process.on("beforeExit", async () => {
-   *   await d.default.stop();
-   * });
-   *
-   */
-  get default() {
-    return this.service({
-      name: "default",
-    });
-  }
-
-  /**
-   * Registers a service with Inferable. This will register all functions on the service.
-   * @param input The service definition.
-   * @returns A registered service instance.
-   * @example
-   * ```ts
-   * const d = new Inferable({apiSecret: "API_SECRET"});
-   *
-   * const service = d.service({
-   *   name: "my-service",
-   * });
-   *
-   * service.register("hello", z.object({name: z.string()}), async ({name}: {name: string}) => {
-   *   return `Hello ${name}`;
-   * });
-   *
-   * // start the service
-   * await service.start();
-   *
-   * // stop the service on shutdown
-   * process.on("beforeExit", async () => {
-   *   await service.stop();
-   * });
-   * ```
-   */
-  service<T extends z.ZodTypeAny | JsonSchemaInput>(input: {
-    name: string;
-    functions?:
-      | FunctionRegistrationInput<T>[]
-      | Promise<FunctionRegistrationInput<T>[]>;
-  }): RegisteredService {
-    validateServiceName(input.name);
-
-    const register: RegisteredService["register"] = ({
-      name,
-      func,
-      schema,
-      config,
-      description,
-      authenticate,
-    }) => {
-      this.register({
-        name,
-        authenticate,
-        serviceName: input.name,
-        func,
-        inputSchema: schema.input,
-        config,
-        description,
-      });
-    };
-
-    return {
-      definition: input,
-      register,
-      start: async () => {
-        const functions = await input.functions;
-        functions?.forEach(register);
-
-        return this.listen(input.name);
-      },
-      stop: () => this.stop(),
-    };
-  }
-
-  getFunctionRegistry() {
-    return this.functionRegistry;
-  }
-
-  get clusterId(): string | null {
-    return this.clusterIdFromPollingAgent;
   }
 }

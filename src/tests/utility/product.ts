@@ -23,7 +23,7 @@ export const succeedsOnSecondAttempt = async ({ id }: { id: string }) => {
   } else {
     cache.set(id, true);
     // wait 5s and time out
-    await new Promise((resolve) => setTimeout(resolve, 60000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
   }
 };
 
@@ -80,7 +80,7 @@ export const productService = () => {
     },
     config: {
       retryCountOnStall: 0,
-      timeoutSeconds: 5,
+      timeoutSeconds: 2,
     },
   });
 
@@ -94,7 +94,7 @@ export const productService = () => {
     },
     config: {
       retryCountOnStall: 2,
-      timeoutSeconds: 5,
+      timeoutSeconds: 2,
     },
   });
 
