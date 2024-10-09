@@ -3,6 +3,15 @@ import { z } from "zod";
 
 const c = initContract();
 
+const machineHeaders = {
+  "x-machine-id": z.string().optional(),
+  "x-machine-sdk-version": z.string().optional(),
+  "x-machine-sdk-language": z.string().optional(),
+  "x-forwarded-for": z.string().optional().optional(),
+  "x-sentinel-no-mask": z.string().optional().optional(),
+  "x-sentinel-unmask-keys": z.string().optional(),
+};
+
 export const blobSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -108,11 +117,7 @@ export const definition = {
     path: "/machines",
     headers: z.object({
       authorization: z.string(),
-      "x-machine-id": z.string(),
-      "x-machine-sdk-version": z.string(),
-      "x-machine-sdk-language": z.string(),
-      "x-forwarded-for": z.string().optional(),
-      "x-sentinel-no-mask": z.string().optional(),
+      ...machineHeaders,
     }),
     body: z.object({
       service: z.string(),
@@ -143,16 +148,13 @@ export const definition = {
       204: z.undefined(),
     },
   },
+  // TODO: Remove
   acknowledgeJob: {
     method: "PUT",
     path: "/jobs/:jobId",
     headers: z.object({
       authorization: z.string(),
-      "x-machine-id": z.string(),
-      "x-machine-sdk-version": z.string(),
-      "x-machine-sdk-language": z.string(),
-      "x-forwarded-for": z.string().optional(),
-      "x-sentinel-no-mask": z.string().optional(),
+      ...machineHeaders,
     }),
     pathParams: z.object({
       jobId: z.string(),
@@ -163,15 +165,13 @@ export const definition = {
     },
     body: z.undefined(),
   },
+  // TODO: Remove
   createResult: {
     method: "POST",
     path: "/jobs/:jobId/result",
     headers: z.object({
       authorization: z.string(),
-      "x-machine-id": z.string(),
-      "x-machine-sdk-version": z.string(),
-      "x-machine-sdk-language": z.string(),
-      "x-sentinel-unmask-keys": z.string().optional(),
+      ...machineHeaders,
     }),
     pathParams: z.object({
       jobId: z.string(),
@@ -436,6 +436,7 @@ export const definition = {
       404: z.undefined(),
     },
   },
+  // TODO: Remove
   executeJobSync: {
     method: "POST",
     path: "/clusters/:clusterId/execute",
@@ -781,6 +782,7 @@ export const definition = {
       200: z.unknown(),
     },
   },
+  // TODO: Remove
   pingCluster: {
     method: "POST",
     path: "/ping-cluster",
@@ -799,6 +801,7 @@ export const definition = {
       401: z.undefined(),
     },
   },
+  // TODO: Remove
   pingClusterV2: {
     method: "POST",
     path: "/ping-cluster-v2",
@@ -878,6 +881,7 @@ export const definition = {
       400: z.undefined(),
     },
   },
+  // TODO: Remove
   getJob: {
     method: "GET",
     path: "/clusters/:clusterId/jobs/:jobId",
@@ -1457,6 +1461,92 @@ export const definition = {
     responses: {
       204: z.undefined(),
       401: z.undefined(),
+    },
+  },
+  createCall: {
+    method: "POST",
+    path: "/clusters/:clusterId/calls",
+    query: z.object({
+      waitTime: z.coerce
+        .number()
+        .min(0)
+        .max(20)
+        .default(0)
+        .describe(
+          "Time in seconds to keep the request open waiting for a response",
+        ),
+    }),
+    headers: z.object({
+      authorization: z.string(),
+    }),
+    body: z.object({
+      service: z.string(),
+      function: z.string(),
+      input: z.object({}).passthrough(),
+    }),
+    responses: {
+      401: z.undefined(),
+      200: z.object({
+        id: z.string(),
+        result: z.any().nullable(),
+        resultType: z.enum(["resolution", "rejection"]).nullable(),
+        status: z.enum(["pending", "running", "success", "failure", "stalled"]),
+      }),
+    },
+  },
+  createCallResult: {
+    method: "POST",
+    path: "/clusters/:clusterId/calls/:callId/result",
+    headers: z.object({
+      authorization: z.string(),
+      ...machineHeaders,
+    }),
+    pathParams: z.object({
+      clusterId: z.string(),
+      callId: z.string(),
+    }),
+    responses: {
+      204: z.undefined(),
+      401: z.undefined(),
+    },
+    body: z.object({
+      result: z.any(),
+      resultType: z.enum(["resolution", "rejection"]),
+      meta: z.object({
+        functionExecutionTime: z.number().optional(),
+      }),
+    }),
+  },
+  listCalls: {
+    method: "GET",
+    path: "/clusters/:clusterId/calls",
+    query: z.object({
+      service: z.string(),
+      status: z
+        .enum(["pending", "running", "paused", "done", "failed"])
+        .default("pending"),
+      limit: z.coerce.number().min(1).max(20).default(10),
+      acknowledge: z.coerce
+        .boolean()
+        .default(false)
+        .describe("Should calls be marked as running"),
+    }),
+    pathParams: z.object({
+      clusterId: z.string(),
+    }),
+    headers: z.object({
+      authorization: z.string(),
+      ...machineHeaders,
+    }),
+    responses: {
+      401: z.undefined(),
+      200: z.array(
+        z.object({
+          id: z.string(),
+          function: z.string(),
+          input: z.any(),
+        }),
+      ),
     },
   },
 } as const;

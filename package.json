@@ -13,7 +13,6 @@
   "author": "Inferable, Inc.",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.600.0",
     "@ts-rest/core": "^3.28.0",
     "@types/debug": "^4.1.8",
     "@types/json-schema": "^7.0.15",
@@ -22,7 +21,6 @@
     "debug": "^4.3.4",
     "node-machine-id": "^1.1.12",
     "prettier": "^3.3.3",
-    "sqs-consumer": "^11.0.2",
     "zod": "^3.23.5",
     "zod-to-json-schema": "^3.23.0"
   },

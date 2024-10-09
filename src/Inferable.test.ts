@@ -1,6 +1,40 @@
 import { z } from "zod";
 import { Inferable } from "./Inferable";
-import { TEST_SECRET } from "./tests/utils";
+import { TEST_CLUSTER_ID, client, inferableInstance } from "./tests/utils";
+
+const testService = () => {
+  const inferable = inferableInstance();
+
+  const service = inferable.service({
+    name: `echoService${Math.random().toString(36).substring(2, 15)}`,
+  });
+
+  service.register({
+    name: "echo",
+    func: async (input: { text: string }) => {
+      return { echo: input.text };
+    },
+    schema: {
+      input: z.object({
+        text: z.string(),
+      }),
+    },
+  });
+
+  service.register({
+    name: "error",
+    func: async (_input) => {
+      throw new Error("This is an error");
+    },
+    schema: {
+      input: z.object({
+        text: z.string(),
+      }),
+    },
+  });
+
+  return service;
+};
 
 describe("Inferable", () => {
   const env = process.env;
@@ -11,8 +45,9 @@ describe("Inferable", () => {
   afterEach(() => {
     process.env = { ...env };
   });
+
   it("should initialize without optional args", () => {
-    expect(() => new Inferable({ apiSecret: "test" })).not.toThrow();
+    expect(() => new Inferable({ apiKey: "test" })).not.toThrow();
   });
 
   it("should throw if no API secret is provided", () => {
@@ -23,12 +58,12 @@ describe("Inferable", () => {
     process.env.INFERABLE_API_SECRET = "environment_secret";
     expect(() => new Inferable()).not.toThrow();
     const d = new Inferable();
-    expect(d.secretPartial).toBe("envi...");
+    expect(d.keyPartial).toBe("envi...");
   });
 
-  it("should register a function properly", async () => {
+  it("should register a function", async () => {
     const d = new Inferable({
-      apiSecret: "fake",
+      apiKey: "fake",
     });
 
     const echo = async (param: { foo: string }) => {
@@ -51,28 +86,11 @@ describe("Inferable", () => {
       },
     });
 
-    const registry = d.getFunctionRegistry();
-
-    expect(registry.echo).toMatchObject({
-      name: "echo",
-      description: "echoes the input",
-      authenticate: expect.any(Function),
-      serviceName: "test",
-    });
-
-    if (!registry.echo.authenticate) {
-      throw new Error("authenticate is not a function");
-    }
-
-    expect(
-      registry.echo.authenticate("test", { foo: "test" }),
-    ).resolves.toBeUndefined();
+    expect(d.registeredFunctions).toEqual(["echo"]);
   });
 
-  it("should list services correctly", async () => {
-    const d = new Inferable({
-      apiSecret: TEST_SECRET,
-    });
+  it("should list active and inactive services correctly", async () => {
+    const d = inferableInstance();
 
     const service = d.service({ name: "test" });
 
@@ -106,5 +124,48 @@ describe("Inferable", () => {
 
     expect(d.activeServices).toEqual([]);
     expect(d.inactiveServices).toEqual(["test"]);
+  });
+});
+
+describe("Functions", () => {
+  it("should handle successful function calls", async () => {
+    const service = testService();
+
+    await service.start();
+
+    const results = await Promise.all(
+      Array.from({ length: 10 }).map(async (_, i) => {
+        return client.createCall({
+          query: {
+            waitTime: 20,
+          },
+          params: {
+            clusterId: TEST_CLUSTER_ID,
+          },
+          body: {
+            function: "echo",
+            service: service.definition.name,
+            input: { text: i.toString() },
+          },
+        });
+      }),
+    );
+
+    results.forEach((result) => {
+      expect(result.status).toBe(200);
+      if (result.status !== 200) throw new Error("Assertion failed");
+
+      expect(result.body).toEqual(
+        expect.objectContaining({
+          status: "success",
+          resultType: "resolution",
+          result: {
+            echo: expect.any(String),
+          },
+        }),
+      );
+    });
+
+    await service.stop();
   });
 });

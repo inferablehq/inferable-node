@@ -1,4 +1,4 @@
-import { client, buildRequest } from "../utils";
+import { client, TEST_CLUSTER_ID } from "../utils";
 import { animalService } from "./animals";
 
 describe("Errors", () => {
@@ -12,40 +12,62 @@ describe("Errors", () => {
   });
 
   it("should get the normal error", async () => {
-    const result = await client.executeJobSync(
-      buildRequest({
+    const result = await client.createCall({
+      query: {
+        waitTime: 20,
+      },
+      params: {
+        clusterId: TEST_CLUSTER_ID,
+      },
+      body: {
         service: "animal",
         function: "getNormalAnimal",
         input: {},
-      }),
-    );
+      },
+    });
 
     expect(result.status).toBe(200);
-    expect(result.body).toHaveProperty("resultType", "rejection");
-    if (result.status == 200) {
-      expect(result.body.result).toMatchObject({
-        name: "Error",
-        message: "This is a normal error",
-      });
-    }
+    if (result.status !== 200) throw new Error("Assertion failed");
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        status: "success",
+        resultType: "rejection",
+        result: expect.objectContaining({
+          name: "Error",
+          message: "This is a normal error",
+        }),
+      }),
+    );
   });
 
   it("should get the custom error", async () => {
-    const result = await client.executeJobSync(
-      buildRequest({
+    const result = await client.createCall({
+      query: {
+        waitTime: 20,
+      },
+      params: {
+        clusterId: TEST_CLUSTER_ID,
+      },
+      body: {
         service: "animal",
         function: "getCustomAnimal",
         input: {},
-      }),
-    );
+      },
+    });
 
     expect(result.status).toBe(200);
-    expect(result.body).toHaveProperty("resultType", "rejection");
-    if (result.status == 200) {
-      expect(result.body.result).toMatchObject({
-        name: "AnimalError",
-        message: "This is a custom error",
-      });
-    }
+    if (result.status !== 200) throw new Error("Assertion failed");
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        status: "success",
+        resultType: "rejection",
+        result: expect.objectContaining({
+          name: "AnimalError",
+          message: "This is a custom error",
+        }),
+      }),
+    );
   });
 });
