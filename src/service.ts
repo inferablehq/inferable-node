@@ -30,7 +30,7 @@ export class Service {
   constructor(options: {
     endpoint: string;
     machineId: string;
-    apiKey: string;
+    apiSecret: string;
     service: string;
     functions: FunctionRegistration[];
   }) {
@@ -39,7 +39,7 @@ export class Service {
     this.client = createApiClient({
       baseUrl: options.endpoint,
       machineId: options.machineId,
-      apiSecret: options.apiKey,
+      apiSecret: options.apiSecret,
     });
 
     this.functions = options.functions;

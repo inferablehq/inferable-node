@@ -47,7 +47,7 @@ describe("Inferable", () => {
   });
 
   it("should initialize without optional args", () => {
-    expect(() => new Inferable({ apiKey: "test" })).not.toThrow();
+    expect(() => new Inferable({ apiSecret: "test" })).not.toThrow();
   });
 
   it("should throw if no API secret is provided", () => {
@@ -58,12 +58,12 @@ describe("Inferable", () => {
     process.env.INFERABLE_API_SECRET = "environment_secret";
     expect(() => new Inferable()).not.toThrow();
     const d = new Inferable();
-    expect(d.keyPartial).toBe("envi...");
+    expect(d.secretPartial).toBe("envi...");
   });
 
   it("should register a function", async () => {
     const d = new Inferable({
-      apiKey: "fake",
+      apiSecret: "fake",
     });
 
     const echo = async (param: { foo: string }) => {

@@ -37,6 +37,6 @@ jobs:
         env:
           INFERABLE_API_ENDPOINT: 'https://api.inferable.ai'
           INFERABLE_CLUSTER_ID: ${{ vars.INFERABLE_CLUSTER_ID }}
-          INFERABLE_MACHINE_KEY: ${{ secrets.INFERABLE_MACHINE_KEY }}
-          INFERABLE_CONSUME_KEY: ${{ secrets.INFERABLE_CONSUME_KEY }}
+          INFERABLE_MACHINE_SECRET: ${{ secrets.INFERABLE_MACHINE_SECRET }}
+          INFERABLE_CONSUME_SECRET: ${{ secrets.INFERABLE_CONSUME_SECRET }}
 
