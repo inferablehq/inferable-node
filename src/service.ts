@@ -219,12 +219,13 @@ export class Service {
         });
 
       const persistBlobs = contentAndBlobs.blobs.map((blob) =>
-        this.client.createBlob({
+        this.client.createCallBlob({
           headers: {
             "x-sentinel-no-mask": "1",
           },
           params: {
-            jobId: call.id,
+            callId: call.id,
+            clusterId: this.clusterId!,
           },
           body: blob,
         }),

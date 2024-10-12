@@ -148,45 +148,6 @@ export const definition = {
       204: z.undefined(),
     },
   },
-  // TODO: Remove
-  acknowledgeJob: {
-    method: "PUT",
-    path: "/jobs/:jobId",
-    headers: z.object({
-      authorization: z.string(),
-      ...machineHeaders,
-    }),
-    pathParams: z.object({
-      jobId: z.string(),
-    }),
-    responses: {
-      204: z.undefined(),
-      401: z.undefined(),
-    },
-    body: z.undefined(),
-  },
-  // TODO: Remove
-  createResult: {
-    method: "POST",
-    path: "/jobs/:jobId/result",
-    headers: z.object({
-      authorization: z.string(),
-      ...machineHeaders,
-    }),
-    pathParams: z.object({
-      jobId: z.string(),
-    }),
-    responses: {
-      204: z.undefined(),
-      401: z.undefined(),
-    },
-    body: z.object({
-      result: z.string(),
-      resultType: z.enum(["resolution", "rejection"]),
-      // TODO: wrap this in meta
-      functionExecutionTime: z.number().optional(),
-    }),
-  },
   live: {
     method: "GET",
     path: "/live",
@@ -196,9 +157,9 @@ export const definition = {
       }),
     },
   },
-  createBlob: {
+  createCallBlob: {
     method: "POST",
-    path: "/jobs/:jobId/blob",
+    path: "/clusters/:clusterId/calls/:callId/blobs",
     headers: z.object({
       authorization: z.string(),
       "x-machine-id": z.string(),
@@ -208,7 +169,8 @@ export const definition = {
       "x-sentinel-no-mask": z.string().optional(),
     }),
     pathParams: z.object({
-      jobId: z.string(),
+      clusterId: z.string(),
+      callId: z.string(),
     }),
     responses: {
       201: z.object({
@@ -434,34 +396,6 @@ export const definition = {
       }),
       401: z.undefined(),
       404: z.undefined(),
-    },
-  },
-  // TODO: Remove
-  executeJobSync: {
-    method: "POST",
-    path: "/clusters/:clusterId/execute",
-    headers: z.object({
-      authorization: z.string(),
-    }),
-    body: z.object({
-      service: z.string(),
-      function: z.string(),
-      input: z.object({}).passthrough(),
-    }),
-    responses: {
-      401: z.undefined(),
-      404: z.undefined(),
-      200: z.object({
-        resultType: z.string(),
-        result: z.any(),
-        status: z.string(),
-      }),
-      400: z.object({
-        message: z.string(),
-      }),
-      500: z.object({
-        error: z.string(),
-      }),
     },
   },
   createRun: {
@@ -782,47 +716,6 @@ export const definition = {
       200: z.unknown(),
     },
   },
-  // TODO: Remove
-  pingCluster: {
-    method: "POST",
-    path: "/ping-cluster",
-    headers: z.object({
-      authorization: z.string(),
-      "x-machine-id": z.string(),
-      "x-machine-sdk-version": z.string(),
-      "x-machine-sdk-language": z.string(),
-      "x-forwarded-for": z.string().optional(),
-    }),
-    body: z.object({
-      services: z.array(z.string()),
-    }),
-    responses: {
-      204: z.undefined(),
-      401: z.undefined(),
-    },
-  },
-  // TODO: Remove
-  pingClusterV2: {
-    method: "POST",
-    path: "/ping-cluster-v2",
-    headers: z.object({
-      authorization: z.string(),
-      "x-machine-id": z.string(),
-      "x-machine-sdk-version": z.string(),
-      "x-machine-sdk-language": z.string(),
-      "x-forwarded-for": z.string().optional(),
-      "x-sentinel-no-mask": z.string().optional(),
-    }),
-    body: z.object({
-      services: z.array(z.string()),
-    }),
-    responses: {
-      200: z.object({
-        outdated: z.boolean(),
-      }),
-      401: z.undefined(),
-    },
-  },
   updateMessage: {
     method: "PUT",
     path: "/clusters/:clusterId/runs/:runId/messages/:messageId",
@@ -881,14 +774,13 @@ export const definition = {
       400: z.undefined(),
     },
   },
-  // TODO: Remove
-  getJob: {
+  getCall: {
     method: "GET",
-    path: "/clusters/:clusterId/jobs/:jobId",
+    path: "/clusters/:clusterId/calls/:callId",
     headers: z.object({ authorization: z.string() }),
     pathParams: z.object({
       clusterId: z.string(),
-      jobId: z.string(),
+      callId: z.string(),
     }),
     responses: {
       200: z.object({
@@ -905,9 +797,9 @@ export const definition = {
       }),
     },
   },
-  listJobReferences: {
+  listRunReferences: {
     method: "GET",
-    path: "/clusters/:clusterId/runs/:runId/job-references",
+    path: "/clusters/:clusterId/runs/:runId/references",
     headers: z.object({ authorization: z.string() }),
     pathParams: z.object({
       clusterId: z.string(),
@@ -1451,7 +1343,7 @@ export const definition = {
       clusterId: z.string(),
     }),
   },
-  createRetry: {
+  createRunRetry: {
     method: "POST",
     path: "/clusters/:clusterId/runs/:runId/retry",
     headers: z.object({ authorization: z.string() }),
