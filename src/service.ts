@@ -48,12 +48,10 @@ export class Service {
   }
 
   public async start(): Promise<{ clusterId: string }> {
-    log("Starting polling agent", { service: this.name });
+    log("Starting polling service", { service: this.name });
     const { clusterId } = await this.registerMachine();
 
     this.clusterId = clusterId;
-
-    this.polling = true;
 
     // Purposefully not awaited
     this.runLoop();
@@ -106,6 +104,8 @@ export class Service {
   }
 
   private async runLoop() {
+    this.polling = true;
+
     let failureCount = 0;
     while (this.polling && failureCount < MAX_CONSECUTIVE_POLL_FAILURES) {
       try {
@@ -119,7 +119,12 @@ export class Service {
       );
     }
 
-    log("Quitting polling agent", { service: this.name, failureCount });
+    this.polling = false;
+    //@eslint-disable-next-line no-console
+    console.error("Quitting polling service", {
+      service: this.name,
+      failureCount,
+    });
   }
 
   private async pollIteration() {
