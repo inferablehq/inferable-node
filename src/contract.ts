@@ -135,15 +135,6 @@ export const definition = {
     responses: {
       200: z.object({
         clusterId: z.string(),
-        queueUrl: z.string(),
-        region: z.string(),
-        enabled: z.boolean().default(true),
-        expiration: z.date(),
-        credentials: z.object({
-          accessKeyId: z.string(),
-          secretAccessKey: z.string(),
-          sessionToken: z.string(),
-        }),
       }),
       204: z.undefined(),
     },
