@@ -21,12 +21,20 @@ export const createApiClient = ({
       ...(apiSecret ? { authorization: apiSecret } : {}),
       ...(machineId ? { "x-machine-id": machineId } : {}),
     },
-    api: clientAbortController
-      ? (args) => {
-          return tsRestFetchApi({
-            ...args,
-            signal: clientAbortController.signal,
-          });
-        }
-      : undefined,
+    api: async (args) => {
+      try {
+        return await tsRestFetchApi({
+          ...args,
+          ...(clientAbortController
+            ? { signal: clientAbortController.signal }
+            : {}),
+        });
+      } catch (e) {
+        return {
+          status: -1,
+          headers: new Headers(),
+          body: e,
+        };
+      }
+    },
   });
