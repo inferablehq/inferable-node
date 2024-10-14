@@ -1,8 +1,13 @@
 <p align="center">
-  <img src="https://a.inferable.ai/logo.png" width="200" style="border-radius: 10px" />
+  <img src="https://a.inferable.ai/logo.png?v=2" width="200" style="border-radius: 10px" />
 </p>
 
 # Typescript SDK
+
+[![npm version](https://badge.fury.io/js/inferable.svg)](https://badge.fury.io/js/inferable)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-inferable.ai-brightgreen)](https://docs.inferable.ai/)
+[![Downloads](https://img.shields.io/npm/dm/inferable)](https://www.npmjs.com/package/inferable)
 
 This is the official Inferable AI SDK for Typescript.
 
