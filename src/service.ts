@@ -149,6 +149,10 @@ export class Service {
       this.retryAfter = Number(retryAfterHeader);
     }
 
+    if (pollResult?.status === 410) {
+      await this.registerMachine();
+    }
+
     if (pollResult?.status !== 200) {
       throw new InferableError("Failed to fetch calls", {
         status: pollResult?.status,
