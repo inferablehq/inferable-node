@@ -148,7 +148,6 @@ class InferablePromptfooProvider implements ApiProvider {
   /**
    * (Starts a new / fetch existing) runs with Inferable.
    * This function can not be called with a machine token.
-   * It requires a User token, this can be obtained using the CLI.
    *
    * @returns A reference to the run which can be used to fetch the run details and messages.
    */
@@ -183,9 +182,9 @@ class InferablePromptfooProvider implements ApiProvider {
       );
     }
 
-    if (this.apiSecret.startsWith("sk_")) {
+    if (this.apiSecret.startsWith("sk_machine")) {
       throw new InferableError(
-        "This function can not be called with a machine token. Please use a User token which can be obtained using the `inferable auth login` command.",
+        "This function can not be called with a machine token.",
       );
     }
 
