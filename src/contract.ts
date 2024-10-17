@@ -83,7 +83,7 @@ export const agentDataSchema = z
         z.object({
           id: z.string().optional(),
           toolName: z.string(),
-          reasoning: z.string(),
+          reasoning: z.string().optional(),
           input: z.object({}).passthrough(),
         }),
       )
@@ -402,6 +402,15 @@ export const definition = {
         .describe(
           "The prompt message, do not provide if using a prompt template",
         ),
+      name: z
+        .string()
+        .optional()
+        .describe("The name of the run, if not provided it will be generated"),
+      reasoningTraces: z
+        .boolean()
+        .default(true)
+        .optional()
+        .describe("Enable reasoning traces for the run"),
       result: z
         .object({
           handler: z
@@ -1423,6 +1432,9 @@ export const definition = {
     }),
     responses: {
       401: z.undefined(),
+      410: z.object({
+        message: z.string(),
+      }),
       200: z.array(
         z.object({
           id: z.string(),
