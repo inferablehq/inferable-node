@@ -133,33 +133,37 @@ const validateProperty = (
 export const ajvErrorToFailures = (
   error: Error,
 ): { path: string; error: string }[] => {
-  const INVALID_MESSAGE_PREFIX = "schema is invalid:";
-
   // example: /data/properties/name some error message
-  if (!error.message.startsWith(INVALID_MESSAGE_PREFIX)) {
-    throw new InferableError("Could not extract failures from AJV error", {
-      error,
-    });
+  if (error.message.startsWith("schema is invalid:")) {
+    return error.message
+      .replace("schema is invalid:", "")
+      .split(",")
+      .map((s) => s.trim())
+      .map((s) => {
+        const firstSpace = s.indexOf(" ");
+
+        if (firstSpace === -1) {
+          throw new InferableError(
+            "Could not extract failures from AJV error",
+            {
+              error,
+            },
+          );
+        }
+
+        return {
+          path: s.slice(0, firstSpace),
+          error: s.slice(firstSpace + 1),
+        };
+      });
   }
 
-  return error.message
-    .replace(INVALID_MESSAGE_PREFIX, "")
-    .split(",")
-    .map((s) => s.trim())
-    .map((s) => {
-      const firstSpace = s.indexOf(" ");
-
-      if (firstSpace === -1) {
-        throw new InferableError("Could not extract failures from AJV error", {
-          error,
-        });
-      }
-
-      return {
-        path: s.slice(0, firstSpace),
-        error: s.slice(firstSpace + 1),
-      };
-    });
+  return [
+    {
+      path: "",
+      error: error.message,
+    },
+  ];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
