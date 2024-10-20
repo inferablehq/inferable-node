@@ -71,12 +71,14 @@ describe("extractBlobs", () => {
       bar: "foo",
       somethingElse: blob({
         name: "some blob object",
+        type: "application/json",
         data: {
           test: "123",
         },
       }),
       anotherSomethingElse: blob({
         name: "another blob object",
+        type: "application/json",
         data: {
           anotherTest: "456",
         },
@@ -93,7 +95,7 @@ describe("extractBlobs", () => {
       blobs: [
         {
           name: "some blob object",
-          type: "json",
+          type: "application/json",
           encoding: "base64",
           size: 20,
           data: Buffer.from(
@@ -104,7 +106,7 @@ describe("extractBlobs", () => {
         },
         {
           name: "another blob object",
-          type: "json",
+          type: "application/json",
           encoding: "base64",
           size: 28,
           data: Buffer.from(

@@ -15,10 +15,12 @@ const machineHeaders = {
 export const blobSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(["json", "json-array"]),
+  type: z.enum(["application/json", "image/png", "image/jpeg"]),
   encoding: z.enum(["base64"]),
   size: z.number(),
   createdAt: z.date(),
+  jobId: z.string().nullable(),
+  workflowId: z.string().nullable(),
 });
 
 export const VersionedTextsSchema = z.object({
@@ -172,11 +174,13 @@ export const definition = {
         message: z.string(),
       }),
     },
-    body: blobSchema.omit({ id: true, createdAt: true }).and(
-      z.object({
-        data: z.string(),
-      }),
-    ),
+    body: blobSchema
+      .omit({ id: true, createdAt: true, jobId: true, workflowId: true })
+      .and(
+        z.object({
+          data: z.string(),
+        }),
+      ),
   },
   getContract: {
     method: "GET",
@@ -219,6 +223,17 @@ export const definition = {
         .string()
         .describe("Human readable description of the cluster"),
     }),
+  },
+  deleteCluster: {
+    method: "DELETE",
+    path: "/clusters/:clusterId",
+    headers: z.object({
+      authorization: z.string(),
+    }),
+    body: z.undefined(),
+    responses: {
+      204: z.undefined(),
+    },
   },
   updateCluster: {
     method: "PUT",
@@ -411,6 +426,11 @@ export const definition = {
         .default(true)
         .optional()
         .describe("Enable reasoning traces for the run"),
+      enableSummarization: z
+        .boolean()
+        .default(true)
+        .optional()
+        .describe("Bypass summarization for the run"),
       result: z
         .object({
           handler: z
@@ -1332,6 +1352,8 @@ export const definition = {
         z.object({
           id: z.string(),
           data: z.string(),
+          tags: z.array(z.string()),
+          title: z.string(),
         }),
       ),
     }),
@@ -1342,6 +1364,60 @@ export const definition = {
     pathParams: z.object({
       clusterId: z.string(),
     }),
+  },
+  getKnowledge: {
+    method: "GET",
+    path: "/clusters/:clusterId/knowledge",
+    headers: z.object({ authorization: z.string() }),
+    query: z.object({
+      query: z.string(),
+      limit: z.coerce.number().min(1).max(50).default(5),
+    }),
+    responses: {
+      200: z.array(
+        z.object({
+          id: z.string(),
+          data: z.string(),
+          tags: z.array(z.string()),
+          title: z.string(),
+          similarity: z.number(),
+        }),
+      ),
+      401: z.undefined(),
+    },
+    pathParams: z.object({
+      clusterId: z.string(),
+    }),
+  },
+  upsertKnowledgeArtifact: {
+    method: "PUT",
+    path: "/clusters/:clusterId/knowledge",
+    headers: z.object({ authorization: z.string() }),
+    body: z.object({
+      id: z.string(),
+      data: z.string(),
+      tags: z.array(z.string()),
+      title: z.string(),
+    }),
+    responses: {
+      200: z.object({
+        id: z.string(),
+      }),
+      401: z.undefined(),
+    },
+    pathParams: z.object({
+      clusterId: z.string(),
+    }),
+  },
+  deleteKnowledgeArtifact: {
+    method: "DELETE",
+    path: "/clusters/:clusterId/knowledge/:artifactId",
+    headers: z.object({ authorization: z.string() }),
+    body: z.undefined(),
+    responses: {
+      204: z.undefined(),
+      401: z.undefined(),
+    },
   },
   createRunRetry: {
     method: "POST",
@@ -1443,6 +1519,25 @@ export const definition = {
         }),
       ),
     },
+  },
+  getKnowledgeArtifact: {
+    method: "GET",
+    path: "/clusters/:clusterId/knowledge/:artifactId",
+    headers: z.object({ authorization: z.string() }),
+    responses: {
+      200: z.object({
+        id: z.string(),
+        data: z.string(),
+        tags: z.array(z.string()),
+        title: z.string(),
+      }),
+      401: z.undefined(),
+      404: z.undefined(),
+    },
+    pathParams: z.object({
+      clusterId: z.string(),
+      artifactId: z.string(),
+    }),
   },
 } as const;
 
