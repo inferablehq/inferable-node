@@ -222,6 +222,8 @@ const blobExtractionSchema = blobSchema
   .omit({
     id: true,
     createdAt: true,
+    workflowId: true,
+    jobId: true,
   })
   .and(
     z.object({
@@ -229,12 +231,20 @@ const blobExtractionSchema = blobSchema
     }),
   );
 
-export const blob = ({ name, data }: { name: string; data: unknown }) => {
-  let type = "json";
-  if (Array.isArray(data)) {
-    type = "json-array";
+type BlobType = "application/json" | "image/png" | "image/jpeg";
+export const blob = ({
+  name,
+  data,
+  type,
+}: {
+  name: string;
+  type: BlobType;
+  data: any;
+}) => {
+  if (type === "application/json") {
+    data = JSON.stringify(data);
   }
-  const encoded = Buffer.from(JSON.stringify(data)).toString("base64");
+  const encoded = Buffer.from(data).toString("base64");
   return {
     [BLOB_DATA_KEY]: {
       name,
