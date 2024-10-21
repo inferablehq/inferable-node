@@ -222,6 +222,8 @@ const blobExtractionSchema = blobSchema
   .omit({
     id: true,
     createdAt: true,
+    workflowId: true,
+    jobId: true,
   })
   .and(
     z.object({
