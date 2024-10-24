@@ -421,16 +421,10 @@ export const definition = {
         .string()
         .optional()
         .describe("The name of the run, if not provided it will be generated"),
-      reasoningTraces: z
-        .boolean()
-        .default(true)
+      model: z
+        .enum(["claude-3-5-sonnet", "claude-3-5-sonnet:beta", "claude-3-haiku"])
         .optional()
-        .describe("Enable reasoning traces for the run"),
-      enableSummarization: z
-        .boolean()
-        .default(true)
-        .optional()
-        .describe("Bypass summarization for the run"),
+        .describe("The model identifier for the run"),
       result: z
         .object({
           handler: z
@@ -449,6 +443,7 @@ export const definition = {
             .describe("The JSON schema which the result should conform to"),
         })
         .optional(),
+      // TODO: Replace with `functions`
       attachedFunctions: z
         .array(z.string())
         .optional()
@@ -492,6 +487,16 @@ export const definition = {
         })
         .optional()
         .describe("A prompt template which the run should be created from"),
+      reasoningTraces: z
+        .boolean()
+        .default(true)
+        .optional()
+        .describe("Enable reasoning traces"),
+      callSummarization: z
+        .boolean()
+        .default(true)
+        .optional()
+        .describe("Enable summarization of oversized call results"),
     }),
     responses: {
       201: z.object({

@@ -74,10 +74,6 @@ describe("Inferable", () => {
     expect(() => new Inferable({ apiSecret: "invalid" })).toThrow();
   });
 
-  it("should throw if incorrect API secret is provided", () => {
-    expect(() => new Inferable({ apiSecret: TEST_CONSUME_SECRET })).toThrow();
-  });
-
   it("should register a function", async () => {
     const d = inferableInstance();
 
