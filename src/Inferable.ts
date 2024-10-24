@@ -21,6 +21,7 @@ import {
   validateServiceName,
 } from "./util";
 import * as links from "./links";
+import { createApiClient } from "./create-client";
 
 // Custom json formatter
 debug.formatters.J = (json) => {
@@ -28,6 +29,25 @@ debug.formatters.J = (json) => {
 };
 
 export const log = debug("inferable:client");
+
+type FunctionIdentifier = {
+  service: string;
+  function: string;
+  event?: "result";
+};
+
+type RunInput = {
+  functions?: FunctionIdentifier[] | undefined;
+} & Omit<
+  Required<
+    Parameters<ReturnType<typeof createApiClient>["createRun"]>[0]
+  >["body"],
+  "attachedFunctions"
+>;
+
+type TemplateRunInput = Omit<RunInput, "template" | "message"> & {
+  input: Record<string, unknown>;
+};
 
 /**
  * The Inferable client. This is the main entry point for using Inferable.
@@ -72,9 +92,13 @@ export class Inferable {
     return require(path.join(__dirname, "..", "package.json")).version;
   }
 
+  private clusterId?: string;
+
   private apiSecret: string;
   private endpoint: string;
   private machineId: string;
+
+  private client: ReturnType<typeof createApiClient>;
 
   private services: Service[] = [];
 
@@ -111,6 +135,7 @@ export class Inferable {
   constructor(options?: {
     apiSecret?: string;
     endpoint?: string;
+    clusterId?: string;
     jobPollWaitTime?: number;
   }) {
     if (options?.apiSecret && process.env.INFERABLE_API_SECRET) {
@@ -118,6 +143,8 @@ export class Inferable {
         "API Secret was provided as an option and environment variable. Constructor argument will be used.",
       );
     }
+
+    this.clusterId = options?.clusterId || process.env.INFERABLE_CLUSTER_ID;
 
     const apiSecret = options?.apiSecret || process.env.INFERABLE_API_SECRET;
 
@@ -127,13 +154,7 @@ export class Inferable {
       );
     }
 
-    if (!apiSecret.startsWith("sk_cluster_machine")) {
-      if (apiSecret.startsWith("sk_")) {
-        throw new InferableError(
-          `Provided non-Machine API Secret. Please see ${links.DOCS_AUTH}`,
-        );
-      }
-
+    if (!apiSecret.startsWith("sk_cluster_")) {
       throw new InferableError(
         `Invalid API Secret. Please see ${links.DOCS_AUTH}`,
       );
@@ -146,6 +167,12 @@ export class Inferable {
       process.env.INFERABLE_API_ENDPOINT ||
       "https://api.inferable.ai";
     this.machineId = machineId();
+
+    this.client = createApiClient({
+      baseUrl: this.endpoint,
+      machineId: this.machineId,
+      apiSecret: this.apiSecret,
+    });
   }
 
   /**
@@ -199,6 +226,98 @@ export class Inferable {
   }
 
   /**
+   * If a prompt template with the given id exists, return it. Otherwise, throw an error.
+   */
+  public async template({ id }: { id: string }) {
+    if (!this.clusterId) {
+      throw new InferableError(
+        "Cluster ID must be provided to manage templates",
+      );
+    }
+    const existingResult = await this.client.getPromptTemplate({
+      params: {
+        clusterId: this.clusterId,
+        templateId: id,
+      },
+    });
+
+    if (existingResult.status != 200) {
+      throw new InferableError(`Failed to get prompt template`, {
+        body: existingResult.body,
+        status: existingResult.status,
+      });
+    }
+
+    return {
+      id,
+      run: (input: TemplateRunInput) =>
+        this.run({
+          ...input,
+          template: { id, input: input.input },
+        }),
+    };
+  }
+
+  public async run(input: RunInput) {
+    if (!this.clusterId) {
+      throw new InferableError("Cluster ID must be provided to manage runs");
+    }
+    const runResult = await this.client.createRun({
+      params: {
+        clusterId: this.clusterId,
+      },
+      body: {
+        ...input,
+        attachedFunctions: input.functions?.map((f) => {
+          if (typeof f === "string") {
+            return f;
+          }
+          return `${f.service}_${f.function}`;
+        }),
+      },
+    });
+
+    if (runResult.status != 201) {
+      throw new InferableError("Failed to create run", {
+        body: runResult.body,
+        status: runResult.status,
+      });
+    }
+
+    return {
+      id: runResult.body.id,
+      poll: async (maxWaitTime?: number, delay?: number) => {
+        const start = Date.now();
+        const end = start + (maxWaitTime || 60_000);
+
+        while (Date.now() < end) {
+          const pollResult = await this.client.getRun({
+            params: {
+              clusterId: process.env.INFERABLE_CLUSTER_ID!,
+              runId: runResult.body.id,
+            },
+          });
+
+          if (pollResult.status !== 200) {
+            throw new InferableError("Failed to poll for run", {
+              body: pollResult.body,
+              status: pollResult.status,
+            });
+          }
+          if (["pending", "running"].includes(pollResult.body.status ?? "")) {
+            await new Promise((resolve) => {
+              setTimeout(resolve, delay || 500);
+            });
+            continue;
+          }
+
+          return pollResult.body;
+        }
+      },
+    };
+  }
+
+  /**
    * Registers a service with Inferable. This will register all functions on the service.
    * @param input The service definition.
    * @returns A registered service instance.
@@ -248,6 +367,11 @@ export class Inferable {
         config,
         description,
       });
+
+      return {
+        service: input.name,
+        function: name,
+      };
     };
 
     return {
@@ -294,13 +418,6 @@ export class Inferable {
         await existing.stop();
       },
     };
-  }
-
-  /**
-   * The cluster ID for this Inferable instance.
-   */
-  get clusterId(): string | null {
-    return this.services[0]?.clusterId || null;
   }
 
   private registerFunction<T extends z.ZodTypeAny | JsonSchemaInput>({

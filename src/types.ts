@@ -75,7 +75,7 @@ export type RegisteredService = {
    */
   register: <T extends z.ZodTypeAny | JsonSchemaInput>(
     input: FunctionRegistrationInput<T>,
-  ) => void;
+  ) => { service: string; function: string };
   start: () => Promise<void>;
   stop: () => Promise<void>;
 };

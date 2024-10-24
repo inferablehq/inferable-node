@@ -6,8 +6,6 @@ import { serializeError } from "./serialize-error";
 import { executeFn, Result } from "./execute-fn";
 import { FunctionRegistration } from "./types";
 import { extractBlobs, validateFunctionArgs } from "./util";
-import { isZodType } from "@ts-rest/core";
-import ajv, { Ajv } from "ajv";
 
 const MAX_CONSECUTIVE_POLL_FAILURES = 50;
 const DEFAULT_RETRY_AFTER_SECONDS = 10;
