@@ -226,7 +226,17 @@ export class Inferable {
   }
 
   /**
-   * If a prompt template with the given id exists, return it. Otherwise, throw an error.
+   * Returns a template instance. This can be used to trigger runs of a template.
+   * @param input The template definition.
+   * @returns A registered template instance.
+   * @example
+   * ```ts
+   * const d = new Inferable({apiSecret: "API_SECRET"});
+   *
+   * const template = await d.template({ id: "template-id" });
+   *
+   * await template.run({ input: { name: "John Smith" } });
+   * ```
    */
   public async template({ id }: { id: string }) {
     if (!this.clusterId) {
@@ -258,6 +268,23 @@ export class Inferable {
     };
   }
 
+  /**
+   * Creates a run.
+   * @param input The run definition.
+   * @returns A run handle.
+   * @example
+   * ```ts
+   * const d = new Inferable({apiSecret: "API_SECRET"});
+   *
+   * const run = await d.run({ message: "Hello world", functions: ["my-service.hello"] });
+   *
+   * console.log("Started run with ID:", run.id);
+   *
+   * const result = await run.poll();
+   *
+   * console.log("Run result:", result);
+   * ```
+   */
   public async run(input: RunInput) {
     if (!this.clusterId) {
       throw new InferableError("Cluster ID must be provided to manage runs");
@@ -286,6 +313,11 @@ export class Inferable {
 
     return {
       id: runResult.body.id,
+      /**
+       * Polls until the run reaches a terminal state (!= "pending" && != "running") or maxWaitTime is reached.
+       * @param maxWaitTime The maximum amount of time to wait for the run to reach a terminal state.
+       * @param delay The amount of time to wait between polling attempts.
+       */
       poll: async (maxWaitTime?: number, delay?: number) => {
         const start = Date.now();
         const end = start + (maxWaitTime || 60_000);
