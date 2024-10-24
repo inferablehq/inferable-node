@@ -49,9 +49,9 @@ export const d = new Inferable({
 });
 ```
 
-### 2. Hello World Service
+### 2. Hello World Function
 
-In a separate file, create the "Hello World" service. This file will import the Inferable instance from i.ts and define the service.
+In a separate file, register a "sayHello" [function](https://docs.inferable.ai/pages/functions). This file will import the Inferable instance from `i.ts` and register the [function](https://docs.inferable.ai/pages/functions) with the [control-plane](https://docs.inferable.ai/pages/control-plane).
 
 ```typescript
 // service.ts
@@ -63,12 +63,8 @@ const sayHello = async ({ to }: { to: string }) => {
   return `Hello, ${to}!`;
 };
 
-// Create the service
-export const helloWorldService = d.service({
-  name: "helloWorld",
-});
-
-helloWorldService.register({
+// Register the service (using the 'default' service)
+const sayHello = i.default.register({
   name: "sayHello",
   func: sayHello,
   schema: {
@@ -77,15 +73,46 @@ helloWorldService.register({
     }),
   },
 });
+
+// Start the 'default' service
+i.default.start();
 ```
 
 ### 3. Running the Service
 
-To run the service, simply run the file with the service definition. This will start the service and make it available to your Inferable agent.
+To run the service, simply run the file with the [function](https://docs.inferable.ai/pages/functions) definition. This will start the `default` [service](https://docs.inferable.ai/pages/services) and make it available to the Inferable agent.
 
 ```bash
 tsx service.ts
 ```
+
+### 4. Trigger a run
+
+The following code will create an [Inferable run](https://docs.inferable.ai/pages/runs) with the prompt "Say hello to John" and the `sayHello` function attached.
+
+> You can inspect the progress of the run:
+>
+> - in the [playground UI](https://app.inferable.ai/) via `inf app`
+> - in the [CLI](https://www.npmjs.com/package/@inferable/cli) via `inf runs list`
+
+```typescript
+const run = await i.run({
+  message: "Say hello to John",
+  functions: [sayHello],
+  // Alternatively, subscribe an Inferable function as a result handler which will be called when the run is complete.
+  //result: { handler: YOUR_HANDLER_FUNCTION }
+});
+
+console.log("Started Run", {
+  result: run.id,
+});
+
+console.log("Run result", {
+  result: await run.poll(),
+});
+```
+
+> Runs can also be triggered via the [API](https://docs.inferable.ai/pages/invoking-a-run-api), [CLI](https://www.npmjs.com/package/@inferable/cli) or [playground UI](https://app.inferable.ai/).
 
 ## Documentation
 
