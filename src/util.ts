@@ -14,6 +14,23 @@ type ValidationError = {
 const ALLOWED_NAME_CHARACTERS = /^[a-zA-Z0-9]+$/;
 const MAX_NAME_LENGTH = 30;
 
+export const validateFunctionArgs = (schema: any, args: unknown) => {
+  try {
+    if (isZodType(schema)) {
+      schema.parse(args);
+    } else {
+      const ajv = new Ajv();
+
+      addFormats(ajv);
+      ajv.compile({
+        ...schema,
+        $schema: undefined,
+      });
+      ajv.validate(schema, args);
+    }
+  } catch (e: unknown) {}
+};
+
 export const validateServiceName = (name: string) => {
   if (!ALLOWED_NAME_CHARACTERS.test(name)) {
     throw new InferableError(
@@ -239,12 +256,16 @@ export const blob = ({
 }: {
   name: string;
   type: BlobType;
-  data: any;
+  data: Buffer | object;
 }) => {
-  if (type === "application/json") {
-    data = JSON.stringify(data);
+  if (!(data instanceof Buffer)) {
+    if (type !== "application/json") {
+      throw new InferableError("Object type must be application/json");
+    }
+    data = Buffer.from(JSON.stringify(data));
   }
-  const encoded = Buffer.from(data).toString("base64");
+  const encoded = data.toString("base64");
+
   return {
     [BLOB_DATA_KEY]: {
       name,
