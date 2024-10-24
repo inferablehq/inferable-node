@@ -5,7 +5,9 @@ import { InferableError } from "./errors";
 import { serializeError } from "./serialize-error";
 import { executeFn, Result } from "./execute-fn";
 import { FunctionRegistration } from "./types";
-import { extractBlobs } from "./util";
+import { extractBlobs, validateFunctionArgs } from "./util";
+import { isZodType } from "@ts-rest/core";
+import ajv, { Ajv } from "ajv";
 
 const MAX_CONSECUTIVE_POLL_FAILURES = 50;
 const DEFAULT_RETRY_AFTER_SECONDS = 10;
@@ -217,22 +219,34 @@ export class Service {
           } else {
             throw new InferableError(`Failed to persist call: ${res.status}`, {
               jobId: call.id,
-              body: res.body,
+              body: JSON.stringify(res.body),
             });
           }
         });
 
       const persistBlobs = contentAndBlobs.blobs.map((blob) =>
-        this.client.createCallBlob({
-          headers: {
-            "x-sentinel-no-mask": "1",
-          },
-          params: {
-            callId: call.id,
-            clusterId: this.clusterId!,
-          },
-          body: blob,
-        }),
+        this.client
+          .createCallBlob({
+            headers: {
+              "x-sentinel-no-mask": "1",
+            },
+            params: {
+              callId: call.id,
+              clusterId: this.clusterId!,
+            },
+            body: blob,
+          })
+          .then(async (res) => {
+            if (res.status === 204) {
+              log("Uploaded blob", call.id, call.function);
+            } else {
+              throw new InferableError(`Failed to upload blob: ${res.status}`, {
+                jobId: call.id,
+                blobName: blob.name,
+                body: JSON.stringify(res.body),
+              });
+            }
+          }),
       );
 
       await Promise.all([persistResult, ...persistBlobs]);
@@ -268,7 +282,7 @@ export class Service {
     }
 
     try {
-      registration.schema.input.parse(args);
+      validateFunctionArgs(registration.schema, args);
     } catch (e: unknown) {
       if (e instanceof z.ZodError) {
         e.errors.forEach((error) => {
