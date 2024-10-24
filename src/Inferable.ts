@@ -43,9 +43,9 @@ type RunInput = {
     Parameters<ReturnType<typeof createApiClient>["createRun"]>[0]
   >["body"],
   "attachedFunctions"
->;
+> & { id?: string };
 
-type TemplateRunInput = Omit<RunInput, "template" | "message"> & {
+type TemplateRunInput = Omit<RunInput, "template" | "message" | "id"> & {
   input: Record<string, unknown>;
 };
 
@@ -289,26 +289,44 @@ export class Inferable {
     if (!this.clusterId) {
       throw new InferableError("Cluster ID must be provided to manage runs");
     }
-    const runResult = await this.client.createRun({
-      params: {
-        clusterId: this.clusterId,
-      },
-      body: {
-        ...input,
-        attachedFunctions: input.functions?.map((f) => {
-          if (typeof f === "string") {
-            return f;
-          }
-          return `${f.service}_${f.function}`;
-        }),
-      },
-    });
 
-    if (runResult.status != 201) {
-      throw new InferableError("Failed to create run", {
-        body: runResult.body,
-        status: runResult.status,
+    let runResult;
+    if (input.id) {
+      runResult = await this.client.getRun({
+        params: {
+          clusterId: this.clusterId,
+          runId: input.id,
+        },
       });
+
+      if (runResult.status != 200) {
+        throw new InferableError("Failed to get existing run", {
+          body: runResult.body,
+          status: runResult.status,
+        });
+      }
+    } else {
+      runResult = await this.client.createRun({
+        params: {
+          clusterId: this.clusterId,
+        },
+        body: {
+          ...input,
+          attachedFunctions: input.functions?.map((f) => {
+            if (typeof f === "string") {
+              return f;
+            }
+            return `${f.service}_${f.function}`;
+          }),
+        },
+      });
+
+      if (runResult.status != 201) {
+        throw new InferableError("Failed to create run", {
+          body: runResult.body,
+          status: runResult.status,
+        });
+      }
     }
 
     return {
